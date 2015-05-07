@@ -1,0 +1,9 @@
+openocd -f beacon.cfg
+../gcc-arm-none-eabi-4_9-2015q1/bin/arm-none-eabi-gdb _build/nrf51822_xxaa_s110.out
+  target extended-remote :3333
+  load
+  monitor reset halt
+  monitor reset run
+
+
+Bluetooth Explorer is your friend

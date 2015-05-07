@@ -109,7 +109,7 @@ CFLAGS += -DSOFTDEVICE_PRESENT
 CFLAGS += -DBOARD_PCA20006
 CFLAGS += -mcpu=cortex-m0
 CFLAGS += -mthumb -mabi=aapcs --std=gnu99
-CFLAGS += -Wall -Werror -O3
+CFLAGS += -Wall -Werror -g
 CFLAGS += -mfloat-abi=soft
 # keep every function in separate section. This will allow linker to dump unused functions
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
@@ -119,6 +119,7 @@ CFLAGS += -flto -fno-builtin
 LDFLAGS += -Xlinker -Map=$(LISTING_DIRECTORY)/$(OUTPUT_FILENAME).map
 LDFLAGS += -mthumb -mabi=aapcs -L $(TEMPLATE_PATH) -T$(LINKER_SCRIPT)
 LDFLAGS += -mcpu=cortex-m0
+LDFLAGS += -g
 # let linker to dump unused sections
 LDFLAGS += -Wl,--gc-sections
 # use newlib in nano version
@@ -132,17 +133,17 @@ ASMFLAGS += -DS110
 ASMFLAGS += -DSOFTDEVICE_PRESENT
 ASMFLAGS += -DBOARD_PCA20006
 #default target - first one defined
-default: clean nrf51822_xxac_s110
+default: clean nrf51822_xxaa_s110
 
 #building all targets
 all: clean
 	$(NO_ECHO)$(MAKE) -f $(MAKEFILE_NAME) -C $(MAKEFILE_DIR) -e cleanobj
-	$(NO_ECHO)$(MAKE) -f $(MAKEFILE_NAME) -C $(MAKEFILE_DIR) -e nrf51822_xxac_s110 
+	$(NO_ECHO)$(MAKE) -f $(MAKEFILE_NAME) -C $(MAKEFILE_DIR) -e nrf51822_xxaa_s110 
 
 #target for printing all targets
 help:
 	@echo following targets are available:
-	@echo 	nrf51822_xxac_s110
+	@echo 	nrf51822_xxaa_s110
 
 
 C_SOURCE_FILE_NAMES = $(notdir $(C_SOURCE_FILES))
@@ -158,9 +159,9 @@ vpath %.s $(ASM_PATHS)
 
 OBJECTS = $(C_OBJECTS) $(ASM_OBJECTS)
 
-nrf51822_xxac_s110: OUTPUT_FILENAME := nrf51822_xxac_s110
-nrf51822_xxac_s110: LINKER_SCRIPT=$(COMPONENTS_PATH)toolchain/gcc/gcc_nrf51_s110_xxac.ld
-nrf51822_xxac_s110: $(BUILD_DIRECTORIES) $(OBJECTS)
+nrf51822_xxaa_s110: OUTPUT_FILENAME := nrf51822_xxaa_s110
+nrf51822_xxaa_s110: LINKER_SCRIPT=$(COMPONENTS_PATH)toolchain/gcc/gcc_nrf51_s110_xxaa.ld
+nrf51822_xxaa_s110: $(BUILD_DIRECTORIES) $(OBJECTS)
 	@echo Linking target: $(OUTPUT_FILENAME).out
 	$(NO_ECHO)$(CC) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).out
 	$(NO_ECHO)$(MAKE) -f $(MAKEFILE_NAME) -C $(MAKEFILE_DIR) -e finalize

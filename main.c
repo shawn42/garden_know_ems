@@ -223,12 +223,14 @@ static void leds_init(void)
     led_sb_init_params.duty_cycle_min  = 0;
     led_sb_init_params.duty_cycle_step = 1;
     led_sb_init_params.leds_pin_bm     = (LED_R_MSK | LED_G_MSK | LED_B_MSK);
-    led_sb_init_params.off_time_ms     = 4000;
+    led_sb_init_params.off_time_ms     = 400;
     led_sb_init_params.on_time_ms      = 0;
     
     err_code = led_softblink_init(&led_sb_init_params);
     APP_ERROR_CHECK(err_code);
 }
+
+static uint8_t my_data[4] = { 0x01, 0x02, 0x03, 0x04};
 
 /**@brief Function for initializing the Advertising functionality.
  *
@@ -245,8 +247,8 @@ static void advertising_init(beacon_mode_t mode)
         ble_advdata_manuf_data_t manuf_specific_data;
         
         manuf_specific_data.company_identifier = p_beacon->data.company_id;
-        manuf_specific_data.data.p_data        = p_beacon->data.beacon_data;
-        manuf_specific_data.data.size          = APP_BEACON_MANUF_DATA_LEN;
+        manuf_specific_data.data.p_data        = my_data;//p_beacon->data.beacon_data;
+        manuf_specific_data.data.size          = sizeof(my_data); //APP_BEACON_MANUF_DATA_LEN;
         
         // Build and set advertising data.
         memset(&advdata, 0, sizeof(advdata));
@@ -754,11 +756,17 @@ static void beacon_params_default_set(void)
     tmp.data.company_id   = APP_DEFAULT_COMPANY_IDENTIFIER;
     tmp.data.led_state    = 0x01;
     
-    beacon_data[BEACON_MANUF_DAT_MINOR_L_IDX] = (uint8_t)(NRF_FICR->DEVICEADDR[0] & 0xFFUL);
-    beacon_data[BEACON_MANUF_DAT_MINOR_H_IDX] = (uint8_t)((NRF_FICR->DEVICEADDR[0] >>  8) & 0xFFUL);
-    beacon_data[BEACON_MANUF_DAT_MAJOR_L_IDX] = (uint8_t)((NRF_FICR->DEVICEADDR[0] >> 16) & 0xFFUL);
-    beacon_data[BEACON_MANUF_DAT_MAJOR_H_IDX] = (uint8_t)((NRF_FICR->DEVICEADDR[0] >> 24) & 0xFFUL);
+    //beacon_data[BEACON_MANUF_DAT_MINOR_L_IDX] = (uint8_t)(NRF_FICR->DEVICEADDR[0] & 0xFFUL);
+    //beacon_data[BEACON_MANUF_DAT_MINOR_H_IDX] = (uint8_t)((NRF_FICR->DEVICEADDR[0] >>  8) & 0xFFUL);
+    //beacon_data[BEACON_MANUF_DAT_MAJOR_L_IDX] = (uint8_t)((NRF_FICR->DEVICEADDR[0] >> 16) & 0xFFUL);
+    //beacon_data[BEACON_MANUF_DAT_MAJOR_H_IDX] = (uint8_t)((NRF_FICR->DEVICEADDR[0] >> 24) & 0xFFUL);
     
+    beacon_data[BEACON_MANUF_DAT_MINOR_L_IDX] = 5;
+    beacon_data[BEACON_MANUF_DAT_MINOR_H_IDX] = 6;
+    beacon_data[BEACON_MANUF_DAT_MAJOR_L_IDX] = 7;
+    beacon_data[BEACON_MANUF_DAT_MAJOR_H_IDX] = 8;
+    
+
     memcpy(tmp.data.beacon_data, beacon_data, APP_BEACON_MANUF_DATA_LEN);
     
     err_code = pstorage_clear(&m_pstorage_block_id, sizeof(beacon_flash_db_t));
