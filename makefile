@@ -66,6 +66,15 @@ $(COMPONENTS_PATH)libraries/util/nrf_assert.c \
 $(COMPONENTS_PATH)softdevice/common/softdevice_handler/softdevice_handler.c \
 $(COMMON_PATH)ble_bcs/ble_bcs.c \
 $(COMPONENTS_PATH)ble/ble_services/ble_dfu/ble_dfu.c \
+$(COMPONENTS_PATH)ble/ble_services/ble_bas/ble_bas.c \
+$(COMPONENTS_PATH)ble/ble_services/ble_hrs/ble_hrs.c \
+$(COMPONENTS_PATH)ble/ble_services/ble_dis/ble_dis.c \
+$(COMPONENTS_PATH)ble/ble_error_log/ble_error_log.c \
+$(COMPONENTS_PATH)ble/ble_debug_assert_handler/ble_debug_assert_handler.c \
+$(COMPONENTS_PATH)ble/device_manager/device_manager_peripheral.c \
+$(COMPONENTS_PATH)libraries/sensorsim/ble_sensorsim.c \
+$(COMPONENTS_PATH)libraries/trace/app_trace.c \
+../research/nrf51-ADC-examples/adc_example_with_softdevice_and_UART/adc_example_with_softdevice_and_UART/ble_nus.c
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  = $(COMPONENTS_PATH)toolchain/gcc/gcc_startup_nrf51.s
@@ -77,7 +86,17 @@ INC_PATHS += -I$(COMPONENTS_PATH)toolchain
 INC_PATHS += -I$(COMPONENTS_PATH)libraries/button
 INC_PATHS += -I$(COMPONENTS_PATH)softdevice/s110/headers
 INC_PATHS += -I$(COMPONENTS_PATH)ble/common
+INC_PATHS += -I$(COMPONENTS_PATH)ble/ble_services/ble_bas
+INC_PATHS += -I$(COMPONENTS_PATH)ble/ble_services/ble_hrs
+INC_PATHS += -I$(COMPONENTS_PATH)ble/ble_services/ble_dis
+INC_PATHS += -I$(COMPONENTS_PATH)ble/ble_error_log
+INC_PATHS += -I$(COMPONENTS_PATH)ble/ble_debug_assert_handler
+INC_PATHS += -I$(COMPONENTS_PATH)ble/device_manager
+INC_PATHS += -I$(COMPONENTS_PATH)ble/device_manager/config
+INC_PATHS += -I$(COMPONENTS_PATH)libraries/sensorsim
+INC_PATHS += -I$(COMPONENTS_PATH)libraries/trace
 INC_PATHS += -I$(EXAMPLES_PATH)bsp
+INC_PATHS += -I$(COMPONENTS_PATH)drivers_nrf/ble_flash
 INC_PATHS += -I$(COMPONENTS_PATH)drivers_nrf/uart
 INC_PATHS += -I$(COMPONENTS_PATH)libraries/fifo
 INC_PATHS += -I$(COMPONENTS_PATH)libraries/timer
@@ -93,6 +112,7 @@ INC_PATHS += -I$(COMMON_PATH)led_softblink
 INC_PATHS += -I$(COMPONENTS_PATH)ble/ble_services/ble_dfu
 INC_PATHS += -I$(COMMON_PATH)sdk_modified/dfu_app_handler
 INC_PATHS += -I$(COMPONENTS_PATH)libraries/bootloader_dfu
+INC_PATHS += -I../research/nrf51-ADC-examples/adc_example_with_softdevice_and_UART/adc_example_with_softdevice_and_UART
 
 OBJECT_DIRECTORY = _build
 LISTING_DIRECTORY = $(OBJECT_DIRECTORY)
