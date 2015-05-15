@@ -20,30 +20,7 @@
  * of 0-3.6V. When the sample is taken, pin 10 (led 2) is toggled and when the sample is ready, pin
  * 11 (led 3) is toggled. The output is then sent both over the UART and over BLE (see the ADC_IRQHandler
  * in this file)
- *
- * This example is configured with UART hardware flow control enabled which is necessary when softdevice
- * is enabled, in order to prevent data loss. To connect the development kit with your PC via 
- * UART, connect the configured RXD, TXD, RTS and CTS pins to the RXD, TXD, RTS and CTS pins 
- * on header P15 on the motherboard. Then connect the RS232 port on the nRFgo motherboard to
- * your PC. Configuration for UART pins is defined in the uart_conf.h header file.
- *
- * This file contains source code for a sample application that uses the Nordic UART service.
- * Connect via BLE with Master Control Panel and the PCA10000 USB dongle, or with 
- * nRF UART 2.0 app for Android, or nRF UART app for IOS, available on 
- * https://www.nordicsemi.com/Products/nRFready-Demo-APPS.
- *
- *
- * This example uses FIFO RX and FIFO TX buffer to operate with the UART. You can set the size
- * for the FIFO buffers by modifying the RX_BUFFER_SIZE and TX_BUFFER_SIZE constants.
- *
- * Documentation for the app_uart library is given in UART driver documentation in the SDK at:
- * https://devzone.nordicsemi.com/documentation/nrf51/6.1.0/s110/html/a00008.html
- *
- * How you can set up a PC terminal to communicate with the nRF51 over the UART is described on
- * https://devzone.nordicsemi.com/question/18120/windows-81-ble-and-uartserial-port-terminal-program/?answer=18268#post-id-18268
  */
-
-
 #include <stdint.h>
 #include <string.h>
 #include "nordic_common.h"
@@ -55,9 +32,6 @@
 #include "softdevice_handler.h"
 #include "app_timer.h"
 #include "app_button.h"
-#include "ble_nus.h"
-#include "app_uart.h"
-#include "uart_conf.h"
 #include "boards.h"
 #include "ble_error_log.h"
 #include "ble_debug_assert_handler.h"
@@ -70,26 +44,28 @@
 #define LED_1 BSP_LED_1
 #define LED_2 BSP_LED_2
 #define LED_3 BSP_LED_0
-#define LED_4 BSP_LED_1
-#define LED_5 BSP_LED_2
-#define LED_6 BSP_LED_0
-#define LED_7 BSP_LED_1
 
 #define WAKEUP_BUTTON_PIN               BUTTON_0                                    /**< Button used to wake up the application. */
 
 #define ADVERTISING_LED_PIN_NO          LED_0                                       /**< LED to indicate advertising state. */
 #define CONNECTED_LED_PIN_NO            LED_1                                       /**< LED to indicate connected state. */
 
-#define DEVICE_NAME                     "Nordic_UART"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "GardenKnowEm"                               /**< Name of device. Will be included in the advertising data. */
 
+//#define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
-#define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
+
+#define NON_CONNECTABLE_ADV_INTERVAL  MSEC_TO_UNITS(100, UNIT_0_625_MS) /**< The advertising interval for non-connectable advertisement (100 ms). This value can vary between 100ms to 10.24s). */
+#define APP_CFG_NON_CONN_ADV_TIMEOUT  0                                 /**< Time for which the device must be advertising in non-connectable mode (in seconds). 0 disables timeout. */
+
+//#define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
+#define APP_ADV_TIMEOUT_IN_SECONDS      0                                         /**< TURN OFF ADV TIMEOUT. */
 
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 #define APP_TIMER_MAX_TIMERS            2                                           /**< Maximum number of simultaneously created timers. */
 #define APP_TIMER_OP_QUEUE_SIZE         4                                           /**< Size of timer operation queues. */
 
-#define ADC_SAMPLING_INTERVAL           APP_TIMER_TICKS(1000, APP_TIMER_PRESCALER)  /**< Sampling rate for the ADC */
+#define ADC_SAMPLING_INTERVAL           APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)  /**< Sampling rate for the ADC */
 
 #define MIN_CONN_INTERVAL               7.5                                          /**< Minimum acceptable connection interval (20 ms), Connection interval uses 1.25 ms units. */
 #define MAX_CONN_INTERVAL               60                                          /**< Maximum acceptable connection interval (75 ms), Connection interval uses 1.25 ms units. */
@@ -109,21 +85,17 @@
 #define SEC_PARAM_MIN_KEY_SIZE          7                                           /**< Minimum encryption key size. */
 #define SEC_PARAM_MAX_KEY_SIZE          16                                          /**< Maximum encryption key size. */
 
-#define START_STRING                    "Start...\n"                                /**< The string that will be sent over the UART when the application starts. */
-
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 #define APP_GPIOTE_MAX_USERS            1
 
-static ble_gap_sec_params_t             m_sec_params;                               /**< Security requirements for this application. */
+//static ble_gap_sec_params_t             m_sec_params;                               /**< Security requirements for this application. */
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
-static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
-
 static app_timer_id_t                   m_adc_sampling_timer_id;                                        /**< ADC timer */
 
-static bool ble_buffer_available = true;
-static bool tx_complete = false;
-static uint8_t adc_result;
+// static bool ble_buffer_available = true;
+// static bool tx_complete = false;
+static uint8_t adc_result = 0;
 
 
 /**@brief     Error handler function, which is called when an error has occurred.
@@ -220,7 +192,7 @@ static void timers_init(void)
 static void gap_params_init(void)
 {
     uint32_t                err_code;
-    ble_gap_conn_params_t   gap_conn_params;
+    // ble_gap_conn_params_t   gap_conn_params;
     ble_gap_conn_sec_mode_t sec_mode;
 
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
@@ -228,16 +200,6 @@ static void gap_params_init(void)
     err_code = sd_ble_gap_device_name_set(&sec_mode,
                                           (const uint8_t *) DEVICE_NAME,
                                           strlen(DEVICE_NAME));
-    APP_ERROR_CHECK(err_code);
-
-    memset(&gap_conn_params, 0, sizeof(gap_conn_params));
-
-    gap_conn_params.min_conn_interval = MIN_CONN_INTERVAL;
-    gap_conn_params.max_conn_interval = MAX_CONN_INTERVAL;
-    gap_conn_params.slave_latency     = SLAVE_LATENCY;
-    gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
-
-    err_code = sd_ble_gap_ppcp_set(&gap_conn_params);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -249,16 +211,15 @@ static void gap_params_init(void)
  */
 static void advertising_init(void)
 {
+    sd_ble_gap_tx_power_set(4);          // accepted values are -40, -30, -20, -16, -12, -8, -4, 0, and 4 dBm
     uint32_t      err_code;
     ble_advdata_t advdata;
-    ble_advdata_t scanrsp;
-    uint8_t       flags = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
-    
-    ble_uuid_t adv_uuids[] = {{BLE_UUID_NUS_SERVICE, m_nus.uuid_type}};
+//    uint8_t       flags = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+    uint8_t         flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
 
+    
     memset(&advdata, 0, sizeof(advdata));
     advdata.name_type               = BLE_ADVDATA_FULL_NAME;
-    advdata.include_appearance      = false;
     advdata.flags.size              = sizeof(flags);
     advdata.flags.p_data            = &flags;
 
@@ -270,61 +231,24 @@ static void advertising_init(void)
     manuf_specific_data.data.size = sizeof(adc_result);
     manuf_specific_data.data.p_data = &adc_result;
     advdata.p_manuf_specific_data   = &manuf_specific_data;
-
-    memset(&scanrsp, 0, sizeof(scanrsp));
-    scanrsp.uuids_complete.uuid_cnt = sizeof(adv_uuids) / sizeof(adv_uuids[0]);
-    scanrsp.uuids_complete.p_uuids  = adv_uuids;
     
-    err_code = ble_advdata_set(&advdata, &scanrsp);
-    APP_ERROR_CHECK(err_code);
-}
-
-
-/**@brief    Function for handling the data from the Nordic UART Service.
- *
- * @details  This function will process the data received from the Nordic UART BLE Service and send
- *           it to the UART module.
- */
-/**@snippet [Handling the data received over BLE] */
-void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
-{
-    for (int i = 0; i < length; i++)
-    {
-        app_uart_put(p_data[i]);
-    }
-    app_uart_put('\n');
-}
-/**@snippet [Handling the data received over BLE] */
-
-
-/**@brief Function for initializing services that will be used by the application.
- */
-static void services_init(void)
-{
-    uint32_t         err_code;
-    ble_nus_init_t   nus_init;
-    
-    memset(&nus_init, 0, sizeof(nus_init));
-
-    nus_init.data_handler = nus_data_handler;
-    
-    err_code = ble_nus_init(&m_nus, &nus_init);
+    err_code = ble_advdata_set(&advdata, NULL);
     APP_ERROR_CHECK(err_code);
 }
 
 
 /**@brief Function for initializing security parameters.
  */
-static void sec_params_init(void)
-{
-    m_sec_params.timeout      = SEC_PARAM_TIMEOUT;
-    m_sec_params.bond         = SEC_PARAM_BOND;
-    m_sec_params.mitm         = SEC_PARAM_MITM;
-    m_sec_params.io_caps      = SEC_PARAM_IO_CAPABILITIES;
-    m_sec_params.oob          = SEC_PARAM_OOB;  
-    m_sec_params.min_key_size = SEC_PARAM_MIN_KEY_SIZE;
-    m_sec_params.max_key_size = SEC_PARAM_MAX_KEY_SIZE;
-}
+// static void sec_params_init(void)
+// {
+//     m_sec_params.timeout      = SEC_PARAM_TIMEOUT;
+//     m_sec_params.bond         = SEC_PARAM_BOND;
+//     m_sec_params.mitm         = SEC_PARAM_MITM;
+//     m_sec_params.io_caps      = SEC_PARAM_IO_CAPABILITIES;
+//     m_sec_params.oob          = SEC_PARAM_OOB;  
+//     m_sec_params.min_key_size = SEC_PARAM_MIN_KEY_SIZE;
+//     m_sec_params.max_key_size = SEC_PARAM_MAX_KEY_SIZE;
+// }
 
 
 /**@brief       Function for handling an event from the Connection Parameters Module.
@@ -360,28 +284,6 @@ static void conn_params_error_handler(uint32_t nrf_error)
 }
 
 
-/**@brief Function for initializing the Connection Parameters module.
- */
-static void conn_params_init(void)
-{
-    uint32_t               err_code;
-    ble_conn_params_init_t cp_init;
-    
-    memset(&cp_init, 0, sizeof(cp_init));
-
-    cp_init.p_conn_params                  = NULL;
-    cp_init.first_conn_params_update_delay = FIRST_CONN_PARAMS_UPDATE_DELAY;
-    cp_init.next_conn_params_update_delay  = NEXT_CONN_PARAMS_UPDATE_DELAY;
-    cp_init.max_conn_params_update_count   = MAX_CONN_PARAMS_UPDATE_COUNT;
-    cp_init.start_on_notify_cccd_handle    = BLE_GATT_HANDLE_INVALID;
-    cp_init.disconnect_on_fail             = false;
-    cp_init.evt_handler                    = on_conn_params_evt;
-    cp_init.error_handler                  = conn_params_error_handler;
-    
-    err_code = ble_conn_params_init(&cp_init);
-    APP_ERROR_CHECK(err_code);
-}
-
 /**@brief Function for starting application timers.
  */
 static void application_timers_start(void)
@@ -403,11 +305,15 @@ static void advertising_start(void)
     // Start advertising
     memset(&adv_params, 0, sizeof(adv_params));
     
-    adv_params.type        = BLE_GAP_ADV_TYPE_ADV_IND;
+    adv_params.type        = BLE_GAP_ADV_TYPE_ADV_NONCONN_IND;// BLE_GAP_ADV_TYPE_ADV_DIRECT_IND;
     adv_params.p_peer_addr = NULL;
     adv_params.fp          = BLE_GAP_ADV_FP_ANY;
-    adv_params.interval    = APP_ADV_INTERVAL;
-    adv_params.timeout     = APP_ADV_TIMEOUT_IN_SECONDS;
+    // adv_params.interval    = APP_ADV_INTERVAL;
+    // adv_params.timeout     = APP_ADV_TIMEOUT_IN_SECONDS;
+
+    adv_params.interval    = NON_CONNECTABLE_ADV_INTERVAL;
+    adv_params.timeout     = APP_CFG_NON_CONN_ADV_TIMEOUT;
+
 
     err_code = sd_ble_gap_adv_start(&adv_params);
     APP_ERROR_CHECK(err_code);
@@ -422,81 +328,81 @@ static void advertising_start(void)
  */
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
-    uint32_t                         err_code;
-    static ble_gap_evt_auth_status_t m_auth_status;
-    ble_gap_enc_info_t *             p_enc_info;
+    // uint32_t                         err_code;
+    // static ble_gap_evt_auth_status_t m_auth_status;
+    // ble_gap_enc_info_t *             p_enc_info;
     
-    switch (p_ble_evt->header.evt_id)
-    {
-        case BLE_GAP_EVT_CONNECTED:
-            nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
-            nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
-            m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+    // switch (p_ble_evt->header.evt_id)
+    // {
+    //     case BLE_GAP_EVT_CONNECTED:
+    //         nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
+    //         nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
+    //         m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
 
-            break;
+    //         break;
             
-        case BLE_GAP_EVT_DISCONNECTED:
-            nrf_gpio_pin_clear(CONNECTED_LED_PIN_NO);
-            m_conn_handle = BLE_CONN_HANDLE_INVALID;
+    //     case BLE_GAP_EVT_DISCONNECTED:
+    //         nrf_gpio_pin_clear(CONNECTED_LED_PIN_NO);
+    //         m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
-            advertising_start();
+    //         advertising_start();
 
-            break;
+    //         break;
             
-        case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
-            err_code = sd_ble_gap_sec_params_reply(m_conn_handle, 
-                                                   BLE_GAP_SEC_STATUS_SUCCESS, 
-                                                   &m_sec_params);
-            APP_ERROR_CHECK(err_code);
-            break;
+    //     case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
+    //         err_code = sd_ble_gap_sec_params_reply(m_conn_handle, 
+    //                                                BLE_GAP_SEC_STATUS_SUCCESS, 
+    //                                                &m_sec_params);
+    //         APP_ERROR_CHECK(err_code);
+    //         break;
             
-        case BLE_GATTS_EVT_SYS_ATTR_MISSING:
-            err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0);
-            APP_ERROR_CHECK(err_code);
-            break;
+    //     case BLE_GATTS_EVT_SYS_ATTR_MISSING:
+    //         err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0);
+    //         APP_ERROR_CHECK(err_code);
+    //         break;
 
-        case BLE_GAP_EVT_AUTH_STATUS:
-            m_auth_status = p_ble_evt->evt.gap_evt.params.auth_status;
-            break;
+    //     case BLE_GAP_EVT_AUTH_STATUS:
+    //         m_auth_status = p_ble_evt->evt.gap_evt.params.auth_status;
+    //         break;
             
-        case BLE_GAP_EVT_SEC_INFO_REQUEST:
-            p_enc_info = &m_auth_status.periph_keys.enc_info;
-            if (p_enc_info->div == p_ble_evt->evt.gap_evt.params.sec_info_request.div)
-            {
-                err_code = sd_ble_gap_sec_info_reply(m_conn_handle, p_enc_info, NULL);
-                APP_ERROR_CHECK(err_code);
-            }
-            else
-            {
-                // No keys found for this device
-                err_code = sd_ble_gap_sec_info_reply(m_conn_handle, NULL, NULL);
-                APP_ERROR_CHECK(err_code);
-            }
-            break;
+    //     case BLE_GAP_EVT_SEC_INFO_REQUEST:
+    //         p_enc_info = &m_auth_status.periph_keys.enc_info;
+    //         if (p_enc_info->div == p_ble_evt->evt.gap_evt.params.sec_info_request.div)
+    //         {
+    //             err_code = sd_ble_gap_sec_info_reply(m_conn_handle, p_enc_info, NULL);
+    //             APP_ERROR_CHECK(err_code);
+    //         }
+    //         else
+    //         {
+    //             // No keys found for this device
+    //             err_code = sd_ble_gap_sec_info_reply(m_conn_handle, NULL, NULL);
+    //             APP_ERROR_CHECK(err_code);
+    //         }
+    //         break;
 
-        case BLE_GAP_EVT_TIMEOUT:
-            if (p_ble_evt->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_ADVERTISEMENT)
-            { 
-                nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
+    //     case BLE_GAP_EVT_TIMEOUT:
+    //         if (p_ble_evt->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_ADVERTISEMENT)
+    //         { 
+    //             nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
 
-                // Configure buttons with sense level low as wakeup source.
-                nrf_gpio_cfg_sense_input(WAKEUP_BUTTON_PIN,
-                                         BUTTON_PULL,
-                                         NRF_GPIO_PIN_SENSE_LOW);
+    //             // Configure buttons with sense level low as wakeup source.
+    //             nrf_gpio_cfg_sense_input(WAKEUP_BUTTON_PIN,
+    //                                      BUTTON_PULL,
+    //                                      NRF_GPIO_PIN_SENSE_LOW);
                 
-                // Go to system-off mode (this function will not return; wakeup will cause a reset)
-                err_code = sd_power_system_off();    
-                APP_ERROR_CHECK(err_code);
-            }
-            break;
-        case BLE_EVT_TX_COMPLETE:
-            if(!ble_buffer_available) tx_complete = true;
-            break;
+    //             // Go to system-off mode (this function will not return; wakeup will cause a reset)
+    //             err_code = sd_power_system_off();    
+    //             APP_ERROR_CHECK(err_code);
+    //         }
+    //         break;
+    //     case BLE_EVT_TX_COMPLETE:
+    //         if(!ble_buffer_available) tx_complete = true;
+    //         break;
 
-        default:
-            // No implementation needed.
-            break;
-    }
+    //     default:
+    //         // No implementation needed.
+    //         break;
+    // }
 }
 
 
@@ -511,7 +417,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
     ble_conn_params_on_ble_evt(p_ble_evt);
-    ble_nus_on_ble_evt(&m_nus, p_ble_evt);
     on_ble_evt(p_ble_evt);
 }
 
@@ -557,88 +462,6 @@ static void power_manage(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
-
-
-void uart_putstring(const char * str)
-{
-    uint32_t err_code;
-    
-    uint8_t len = strlen((char *) str);
-    for (uint8_t i = 0; i < len; i++)
-    {
-        err_code = app_uart_put(str[i]);
-        APP_ERROR_CHECK(err_code);
-    }
-    
-}
-
-
-/**@brief   Function for handling UART interrupts.
- *
- * @details This function will receive a single character from the UART and append it to a string.
- *          The string will be be sent over BLE when the last character received was a 'new line'
- *          i.e '\n' (hex 0x0D) or if the string has reached a length of @ref NUS_MAX_DATA_LENGTH.
- */
-
-void uart_evt_callback(app_uart_evt_t * uart_evt)
-{
-    //uint32_t err_code;
-    
-    switch (uart_evt->evt_type)
-    {
-        case APP_UART_DATA: 
-                        //Data is ready on the UART                 
-            break;
-                        
-        case APP_UART_DATA_READY:
-            //Data is ready on the UART FIFO        
-            break;
-                        
-        case APP_UART_TX_EMPTY:
-            //Data has been successfully transmitted on the UART
-            break;
-                        
-        default:
-            break;
-    }
-    
-}
-/**@brief  Function for initializing the UART module.
- */
-static void uart_init(void)
-{
-    uint32_t err_code;
-    
-    APP_UART_FIFO_INIT(&comm_params,
-                        RX_BUF_SIZE,
-                        TX_BUF_SIZE,
-                        uart_evt_callback,
-                        UART_IRQ_PRIORITY,
-                        err_code);
-    
-    APP_ERROR_CHECK(err_code);
-}
-
-bool ble_attempt_to_send(uint8_t * data, uint8_t length)
-{
-    uint32_t err_code;
-    
-    err_code = ble_nus_send_string(&m_nus, data,length);
-    
-    if(err_code == BLE_ERROR_NO_TX_BUFFERS)
-    {
-        /* ble tx buffer full*/
-        return false;
-    }                   
-    else if (err_code != NRF_ERROR_INVALID_STATE)
-    {
-        APP_ERROR_CHECK(err_code);   
-    }
-    
-    return true; 
-}
-
 //ADC initialization
 static void adc_init(void)
 {   
@@ -662,17 +485,15 @@ void ADC_IRQHandler(void)
     //uint8_t adc_result;
     
     /* Clear dataready event */
-  NRF_ADC->EVENTS_END = 0;  
+    NRF_ADC->EVENTS_END = 0;  
 
-  /* Write ADC result both to the UART and over BLE */
+    /* Write ADC result both to the UART and over BLE */
     adc_result = NRF_ADC->RESULT;
-    app_uart_put(adc_result);
-    ble_nus_send_string(&m_nus, &adc_result, 1);
     nrf_gpio_pin_toggle(LED_3);        //indicate on LED that the ADC interrupt handler is executing
     advertising_init();
     
     //Use the STOP task to save current. Workaround for PAN_028 rev1.5 anomaly 1.
-  NRF_ADC->TASKS_STOP = 1;
+    NRF_ADC->TASKS_STOP = 1;
     
     //Release the external crystal
     sd_clock_hfclk_release();
@@ -682,55 +503,21 @@ void ADC_IRQHandler(void)
  */
 int main(void)
 {
-    
-    static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
-    static uint8_t index = 0;
-    uint8_t newbyte;
-    
     // Initialize
     leds_init();
     timers_init();
     buttons_init();
-    uart_init();
     ble_stack_init();
     gap_params_init();
-    services_init();
     advertising_init();
-    conn_params_init();
-    sec_params_init();
+    adc_init();         //Initialize ADC
     
-    uart_putstring(START_STRING);
-    
-        adc_init();         //Initialize ADC
-    
-        application_timers_start();
+    application_timers_start();
     advertising_start();
     
     // Enter main loop
     for (;;)
     { 
-        /*Stop reading new data if there are no ble buffers available */
-        if(ble_buffer_available)
-        {
-            if(app_uart_get(&newbyte) == NRF_SUCCESS)
-            {
-                data_array[index++] =  newbyte;
-               
-                if (index >= (BLE_NUS_MAX_DATA_LEN))
-                                {
-                    ble_buffer_available=ble_attempt_to_send(&data_array[0],index);
-                                        if(ble_buffer_available) index=0;
-                                }
-            }
-        }
-        /* Re-transmission if ble_buffer_available was set to false*/
-        if(tx_complete)
-        {
-            tx_complete=false;
-            
-            ble_buffer_available=ble_attempt_to_send(&data_array[0],index);
-            if(ble_buffer_available) index =0;
-        }
         power_manage();
     }
 }
