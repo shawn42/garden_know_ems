@@ -45,13 +45,13 @@ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-ou
 #/Users/shawn42/code/beacon/beacon_sdk_v1.1.0/Source Code/nrf51_beacon/common/led_softblink/led_softblink.c
 C_SOURCE_FILES += \
 main.c \
+twi_hw_master.c \
 $(COMMON_PATH)led_softblink/led_softblink.c \
 $(EXAMPLES_PATH)bsp/bsp.c \
 $(COMPONENTS_PATH)toolchain/system_nrf51.c \
 $(COMPONENTS_PATH)ble/common/ble_advdata.c \
 $(COMPONENTS_PATH)ble/common/ble_conn_params.c \
 $(COMPONENTS_PATH)ble/common/ble_srv_common.c \
-$(COMPONENTS_PATH)drivers_nrf/uart/app_uart_fifo.c \
 $(COMPONENTS_PATH)drivers_nrf/hal/nrf_delay.c \
 $(COMPONENTS_PATH)drivers_nrf/pstorage/pstorage.c \
 $(COMPONENTS_PATH)libraries/bootloader_dfu/bootloader_util_gcc.c \
@@ -97,7 +97,6 @@ INC_PATHS += -I$(COMPONENTS_PATH)libraries/sensorsim
 INC_PATHS += -I$(COMPONENTS_PATH)libraries/trace
 INC_PATHS += -I$(EXAMPLES_PATH)bsp
 INC_PATHS += -I$(COMPONENTS_PATH)drivers_nrf/ble_flash
-INC_PATHS += -I$(COMPONENTS_PATH)drivers_nrf/uart
 INC_PATHS += -I$(COMPONENTS_PATH)libraries/fifo
 INC_PATHS += -I$(COMPONENTS_PATH)libraries/timer
 INC_PATHS += -I$(COMPONENTS_PATH)libraries/gpiote
@@ -106,6 +105,7 @@ INC_PATHS += -I$(COMPONENTS_PATH)softdevice/common/softdevice_handler
 INC_PATHS += -I$(COMPONENTS_PATH)libraries/scheduler
 INC_PATHS += -I$(COMPONENTS_PATH)libraries/util
 INC_PATHS += -I$(COMPONENTS_PATH)drivers_nrf/pstorage
+INC_PATHS += -I$(COMPONENTS_PATH)drivers_nrf/twi_master
 INC_PATHS += -I$(COMMON_PATH)beacon
 INC_PATHS += -I$(COMMON_PATH)ble_bcs
 INC_PATHS += -I$(COMMON_PATH)led_softblink
