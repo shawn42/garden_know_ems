@@ -25,8 +25,8 @@
   Time for which the device must be advertising in non-connectable mode (in seconds). 
   0 disables timeout. */
 #define APP_CFG_NON_CONN_ADV_TIMEOUT_SEC  0
-#define ADVERTISING_DURATION APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER) 
-#define SLEEP_DURATION       APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER) 
+#define ADVERTISING_DURATION APP_TIMER_TICKS(3000, APP_TIMER_PRESCALER) 
+#define SLEEP_DURATION       APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER) 
 
 /**
   4 bytes for now...  */
@@ -37,16 +37,12 @@
 #define APP_TIMER_MAX_TIMERS            2 /**< Maximum number of simultaneously created timers. */
 #define APP_TIMER_OP_QUEUE_SIZE         4 /**< Size of timer operation queues. */
 
-#define LED_0 LED_RGB_RED
-#define LED_1 LED_RGB_GREEN
-#define LED_2 LED_RGB_BLUE
-
 #define ADVERTISING_LED_PIN_NO LED_RGB_BLUE
 #define POWER_LED_PIN_NO LED_RGB_GREEN
 #define ERROR_LED_PIN_NO LED_RGB_RED
 
-#define SOIL_SIDE_A_PIN_NO 5  // P0.01
-#define SOIL_SIDE_B_PIN_NO 17 // P0.11
+#define SOIL_SIDE_A_PIN_NO 1  // P0.01
+#define SOIL_SIDE_B_PIN_NO 11 // P0.11
 
 
 typedef enum {
@@ -250,33 +246,37 @@ static void read_humidity()
   know_em_packet.humidity = humidity_raw;
 }
 
-static void catch_me()
-{
-  //
-}
-
 static void read_temp()
 {
-  if(!twi_master_init()) {
-    // catch_me();
-  }
+  twi_master_init();
   uint8_t temp_response[3] = {0,0,0};
-  if(!twi_master_transfer(WRITE_TEMP_ADDRESS, &READ_TEMP_COMMAND, 1, false)) 
-  {
-    // catch_me();
-  }
-  if(!twi_master_transfer(READ_TEMP_ADDRESS, &temp_response[0], sizeof(temp_response), true))
-  {
-    catch_me();
-  }
+  twi_master_transfer(WRITE_TEMP_ADDRESS, &READ_TEMP_COMMAND, 1, false);
+  twi_master_transfer(READ_TEMP_ADDRESS, &temp_response[0], sizeof(temp_response), true);
 
   // uint16_t temp_raw = ((temp_response[1] & 0xFC) >> 2) | (temp_response[0] << 6);
   uint16_t temp_raw = ((temp_response[1] & 0xFC)) | (temp_response[0] << 8);
   know_em_packet.temp = temp_raw;
 }
 
+static void request_clock(void)
+{
+  uint32_t p_is_running = 0;
+
+  sd_clock_hfclk_request();
+  while(! p_is_running) {                             //wait for the hfclk to be available
+    sd_clock_hfclk_is_running((&p_is_running));
+  }               
+}
+
+static void release_clock(void)
+{
+  sd_clock_hfclk_release();
+}
+
 static void read_light()
 {
+  request_clock();
+
   // interrupt ADC
   NRF_ADC->INTENSET = (ADC_INTENSET_END_Disabled << ADC_INTENSET_END_Pos);
           
@@ -297,41 +297,14 @@ static void read_light()
   know_em_packet.light = res;
     
   NRF_ADC->TASKS_STOP = 1;
+
+  release_clock();
 }
 
 static void reset_soil_sensor()
 {
+  request_clock();
   // take a reading the other way to get the juices flowing backwards
-  // interrupt ADC
-  NRF_ADC->INTENSET = (ADC_INTENSET_END_Disabled << ADC_INTENSET_END_Pos);
-
-
-  nrf_gpio_pin_clear(SOIL_SIDE_B_PIN_NO);
-  nrf_gpio_pin_set(SOIL_SIDE_A_PIN_NO);
-          
-  // config ADC
-  NRF_ADC->CONFIG = (ADC_CONFIG_EXTREFSEL_None << ADC_CONFIG_EXTREFSEL_Pos) /* Bits 17..16 : ADC external reference pin selection. */
-                    | (ADC_CONFIG_PSEL_AnalogInput4 << ADC_CONFIG_PSEL_Pos)         
-                    | (ADC_CONFIG_REFSEL_VBG << ADC_CONFIG_REFSEL_Pos)             
-                    | (ADC_CONFIG_INPSEL_AnalogInputOneThirdPrescaling << ADC_CONFIG_INPSEL_Pos) 
-                    | (ADC_CONFIG_RES_8bit << ADC_CONFIG_RES_Pos);
-  
-  NRF_ADC->ENABLE = ADC_ENABLE_ENABLE_Enabled;
-  NRF_ADC->TASKS_START = 1;
-  while (!NRF_ADC->EVENTS_END)
-  {}
-  NRF_ADC->EVENTS_END = 0;
-
-  nrf_gpio_pin_clear(SOIL_SIDE_A_PIN_NO);
-
-  // throw away the junk response
-  NRF_ADC->RESULT;  
-    
-  NRF_ADC->TASKS_STOP = 1;
-}
-
-static void read_soil()
-{
   // interrupt ADC
   NRF_ADC->INTENSET = (ADC_INTENSET_END_Disabled << ADC_INTENSET_END_Pos);
 
@@ -352,11 +325,43 @@ static void read_soil()
   {}
   NRF_ADC->EVENTS_END = 0;
 
+  nrf_gpio_pin_clear(SOIL_SIDE_B_PIN_NO);
+
+  // throw away the junk response
+  NRF_ADC->RESULT;  
+    
+  NRF_ADC->TASKS_STOP = 1;
+  release_clock();
+}
+
+static void read_soil()
+{
+  request_clock();
+  // interrupt ADC
+  NRF_ADC->INTENSET = (ADC_INTENSET_END_Disabled << ADC_INTENSET_END_Pos);
+
+  nrf_gpio_pin_clear(SOIL_SIDE_B_PIN_NO);
+  nrf_gpio_pin_set(SOIL_SIDE_A_PIN_NO);
+          
+  // config ADC
+  NRF_ADC->CONFIG = (ADC_CONFIG_EXTREFSEL_None << ADC_CONFIG_EXTREFSEL_Pos) /* Bits 17..16 : ADC external reference pin selection. */
+                    | (ADC_CONFIG_PSEL_AnalogInput4 << ADC_CONFIG_PSEL_Pos)         
+                    | (ADC_CONFIG_REFSEL_VBG << ADC_CONFIG_REFSEL_Pos)             
+                    | (ADC_CONFIG_INPSEL_AnalogInputOneThirdPrescaling << ADC_CONFIG_INPSEL_Pos) 
+                    | (ADC_CONFIG_RES_8bit << ADC_CONFIG_RES_Pos);
+  
+  NRF_ADC->ENABLE = ADC_ENABLE_ENABLE_Enabled;
+  NRF_ADC->TASKS_START = 1;
+  while (!NRF_ADC->EVENTS_END)
+  {}
+  NRF_ADC->EVENTS_END = 0;
+
   // TODO add reverse polarity time
   know_em_packet.soil = NRF_ADC->RESULT;  
     
   NRF_ADC->TASKS_STOP = 1;
-  nrf_gpio_pin_clear(SOIL_SIDE_B_PIN_NO);
+  release_clock();
+  nrf_gpio_pin_clear(SOIL_SIDE_A_PIN_NO);
 }
 
 static void go_to_sleep(void)
@@ -424,8 +429,8 @@ int main(void)
         transition_to(SLEEPING);
         break;
 
+      case SLEEPING:
       case ADVERTISING:
-        break;
 
       default:
         // app_sched_execute();
