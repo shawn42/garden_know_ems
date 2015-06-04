@@ -14,7 +14,7 @@
 
 /* Max cycles approximately to wait on RXDREADY and TXDREADY event, 
  * This is optimized way instead of using timers, this is not power aware. */
-#define MAX_TIMEOUT_LOOPS             (20000UL)        /**< MAX while loops to wait for RXD/TXD event */
+#define MAX_TIMEOUT_LOOPS             (40000UL)        /**< MAX while loops to wait for RXD/TXD event */
 
 static bool twi_master_write(uint8_t *data, uint8_t data_length, bool issue_stop_condition)
 {

@@ -42,39 +42,18 @@ SIZE    		:= "$(GNU_INSTALL_ROOT)/bin/$(GNU_PREFIX)-size"
 remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-out $(firstword $1),$1))))
 
 #source common to all targets
-#/Users/shawn42/code/beacon/beacon_sdk_v1.1.0/Source Code/nrf51_beacon/common/led_softblink/led_softblink.c
 C_SOURCE_FILES += \
 main.c \
 twi_hw_master.c \
-$(COMMON_PATH)led_softblink/led_softblink.c \
-$(EXAMPLES_PATH)bsp/bsp.c \
 $(COMPONENTS_PATH)toolchain/system_nrf51.c \
-$(COMPONENTS_PATH)ble/common/ble_advdata.c \
-$(COMPONENTS_PATH)ble/common/ble_conn_params.c \
-$(COMPONENTS_PATH)ble/common/ble_srv_common.c \
-$(COMPONENTS_PATH)drivers_nrf/hal/nrf_delay.c \
 $(COMPONENTS_PATH)drivers_nrf/pstorage/pstorage.c \
 $(COMPONENTS_PATH)libraries/bootloader_dfu/bootloader_util_gcc.c \
-$(COMMON_PATH)sdk_modified/dfu_app_handler/dfu_app_handler_mod.c \
-$(COMPONENTS_PATH)libraries/button/app_button.c \
 $(COMPONENTS_PATH)libraries/util/app_error.c \
-$(COMPONENTS_PATH)libraries/fifo/app_fifo.c \
-$(COMPONENTS_PATH)libraries/gpiote/app_gpiote.c \
 $(COMPONENTS_PATH)libraries/scheduler/app_scheduler.c \
 $(COMPONENTS_PATH)libraries/timer/app_timer.c \
-$(COMPONENTS_PATH)libraries/util/nrf_assert.c \
 $(COMPONENTS_PATH)softdevice/common/softdevice_handler/softdevice_handler.c \
-$(COMMON_PATH)ble_bcs/ble_bcs.c \
 $(COMPONENTS_PATH)ble/ble_services/ble_dfu/ble_dfu.c \
-$(COMPONENTS_PATH)ble/ble_services/ble_bas/ble_bas.c \
-$(COMPONENTS_PATH)ble/ble_services/ble_hrs/ble_hrs.c \
-$(COMPONENTS_PATH)ble/ble_services/ble_dis/ble_dis.c \
-$(COMPONENTS_PATH)ble/ble_error_log/ble_error_log.c \
-$(COMPONENTS_PATH)ble/ble_debug_assert_handler/ble_debug_assert_handler.c \
-$(COMPONENTS_PATH)ble/device_manager/device_manager_peripheral.c \
-$(COMPONENTS_PATH)libraries/sensorsim/ble_sensorsim.c \
-$(COMPONENTS_PATH)libraries/trace/app_trace.c \
-../research/nrf51-ADC-examples/adc_example_with_softdevice_and_UART/adc_example_with_softdevice_and_UART/ble_nus.c
+$(COMPONENTS_PATH)ble/common/ble_advdata.c \
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  = $(COMPONENTS_PATH)toolchain/gcc/gcc_startup_nrf51.s
