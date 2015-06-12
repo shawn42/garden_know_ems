@@ -10,6 +10,7 @@
 #include "app_timer.h"
 #include "twi_master.h"
 #include "nrf_gpio.h"
+#include "nrf_delay.h"
 #include "boards.h"
 
 // defines
@@ -25,8 +26,8 @@
   Time for which the device must be advertising in non-connectable mode (in seconds). 
   0 disables timeout. */
 #define APP_CFG_NON_CONN_ADV_TIMEOUT_SEC  0
-#define ADVERTISING_DURATION APP_TIMER_TICKS(3000, APP_TIMER_PRESCALER) 
-#define SLEEP_DURATION       APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER) 
+#define ADVERTISING_DURATION APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER) 
+#define SLEEP_DURATION       APP_TIMER_TICKS(60000, APP_TIMER_PRESCALER) 
 
 /**
   4 bytes for now...  */
@@ -87,6 +88,8 @@ static app_timer_id_t sleeping_timer_id;
 // methods
 static void done_advertising_handler(void*);
 static void done_sleeping_handler(void*);
+static void led_on(uint32_t);
+static void led_off(uint32_t);
 
 static void transition_to(states_type new_state)
 {
@@ -183,7 +186,7 @@ static void start_advertising(void)
   adv_params.interval    = NON_CONNECTABLE_ADV_INTERVAL;
   adv_params.timeout     = APP_CFG_NON_CONN_ADV_TIMEOUT_SEC;
 
-  nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
+  // led_on(ADVERTISING_LED_PIN_NO);
 
   err_code = sd_ble_gap_adv_start(&adv_params);
   APP_ERROR_CHECK(err_code);
@@ -202,6 +205,7 @@ static void done_advertising_handler(void* context)
 
 static void done_sleeping_handler(void* context)
 {
+  led_on(POWER_LED_PIN_NO);
   transition_to(READ_HUMIDITY);
 }
 
@@ -210,7 +214,7 @@ static void stop_advertising(void)
   uint32_t err_code = sd_ble_gap_adv_stop();
   APP_ERROR_CHECK(err_code);
 
-  nrf_gpio_pin_set(ADVERTISING_LED_PIN_NO);
+  led_off(ADVERTISING_LED_PIN_NO);
 }
 
 static void scheduler_init(void)
@@ -224,13 +228,22 @@ static void soil_sensor_init(void)
   nrf_gpio_cfg_output(SOIL_SIDE_B_PIN_NO);
 }
 
+static void led_on(uint32_t pin)
+{
+  nrf_gpio_pin_clear(pin);
+}
+static void led_off(uint32_t pin)
+{
+  nrf_gpio_pin_set(pin);
+}
+
 static void leds_init(void)
 {
   nrf_gpio_cfg_output(ADVERTISING_LED_PIN_NO);
   nrf_gpio_cfg_output(POWER_LED_PIN_NO);
   nrf_gpio_cfg_output(ERROR_LED_PIN_NO);
 
-  nrf_gpio_pin_clear(POWER_LED_PIN_NO);
+  // led_on(POWER_LED_PIN_NO);
 }
 
 static void read_humidity()
@@ -356,7 +369,6 @@ static void read_soil()
   {}
   NRF_ADC->EVENTS_END = 0;
 
-  // TODO add reverse polarity time
   know_em_packet.soil = NRF_ADC->RESULT;  
     
   NRF_ADC->TASKS_STOP = 1;
@@ -366,12 +378,18 @@ static void read_soil()
 
 static void go_to_sleep(void)
 {
+  led_off(POWER_LED_PIN_NO);
   uint16_t err_code = app_timer_start(sleeping_timer_id, SLEEP_DURATION, NULL);
+
+  NRF_TWI1->ENABLE = TWI_ENABLE_ENABLE_Disabled << TWI_ENABLE_ENABLE_Pos;
+
   APP_ERROR_CHECK(err_code);
 }
 
 static void startup(void)
 {
+  NRF_POWER->TASKS_LOWPWR = 1;
+
   leds_init();
   soil_sensor_init();
   scheduler_init();
@@ -379,11 +397,7 @@ static void startup(void)
   gap_params_init();
   advertising_init();
   timers_init();
-
-  // TODO add LED flashes for debug on success fail
-  twi_master_init();
 }
-
 
 int main(void)
 {
@@ -438,5 +452,3 @@ int main(void)
     }
   }
 }
-
-
