@@ -142,7 +142,7 @@ static void update_advertising_data(void)
 
   know_em_packet.packet_number++;
   manuf_specific_data.company_identifier = 0xEFBE;
-  manuf_specific_data.data.size = sizeof(know_em_packet);
+  manuf_specific_data.data.size = sizeof(know_em_packet) + sizeof(manuf_specific_data.company_identifier);
   manuf_specific_data.data.p_data = (uint8_t*)&know_em_packet;
   advdata.p_manuf_specific_data   = &manuf_specific_data;
 
